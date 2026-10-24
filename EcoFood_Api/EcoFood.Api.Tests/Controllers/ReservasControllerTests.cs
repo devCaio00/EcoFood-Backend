@@ -115,4 +115,74 @@ public class ReservasControllerTests
         Assert.IsType<BadRequestObjectResult>(resultado.Result);
         Assert.Empty(context.Reservas);
     }
+
+    [Fact]
+    public async Task Concluir_DeveRetornar204_EAtualizarStatus_QuandoReservaPendente()
+    {
+        // Arrange
+        using var context = TestDbContextFactory.Criar();
+        var (doador, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+        
+        // Simulamos uma reserva ja feita no banco
+        var reserva = new Reserva
+        {
+            DoacaoId = doacao.Id,
+            ReceptorId = receptor.Id,
+            EnderecoConfirmado = true,
+            EnderecoRetiradaSnapshot = doador.Endereco,
+            Status = StatusReserva.Pendente
+        };
+        context.Reservas.Add(reserva);
+        doacao.Status = StatusDoacao.Reservado; // A doacao fica reservada
+        await context.SaveChangesAsync();
+
+        var controller = new ReservasController(context);
+
+        // Act
+        var resultado = await controller.Concluir(reserva.Id);
+
+        // Assert
+        Assert.IsType<NoContentResult>(resultado);
+        
+        var reservaAtualizada = await context.Reservas.FindAsync(reserva.Id);
+        Assert.Equal(StatusReserva.Concluida, reservaAtualizada!.Status);
+        
+        var doacaoAtualizada = await context.Doacoes.FindAsync(doacao.Id);
+        Assert.Equal(StatusDoacao.Retirado, doacaoAtualizada!.Status);
+    }
+
+    [Fact]
+    public async Task Cancelar_DeveRetornar204_ELiberarDoacao_QuandoReservaExiste()
+    {
+        // Arrange
+        using var context = TestDbContextFactory.Criar();
+        var (doador, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+        
+        var reserva = new Reserva
+        {
+            DoacaoId = doacao.Id,
+            ReceptorId = receptor.Id,
+            EnderecoConfirmado = true,
+            EnderecoRetiradaSnapshot = doador.Endereco,
+            Status = StatusReserva.Pendente
+        };
+        context.Reservas.Add(reserva);
+        doacao.Status = StatusDoacao.Reservado;
+        await context.SaveChangesAsync();
+
+        var controller = new ReservasController(context);
+
+        // Act
+        var resultado = await controller.Cancelar(reserva.Id);
+
+        // Assert
+        Assert.IsType<NoContentResult>(resultado);
+        
+        var reservaAtualizada = await context.Reservas.FindAsync(reserva.Id);
+        Assert.Equal(StatusReserva.Cancelada, reservaAtualizada!.Status);
+        
+        // A doacao volta a ficar disponivel para outras pessoas
+        var doacaoAtualizada = await context.Doacoes.FindAsync(doacao.Id);
+        Assert.Equal(StatusDoacao.Disponivel, doacaoAtualizada!.Status);
+    }
 }
