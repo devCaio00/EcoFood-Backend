@@ -27,6 +27,12 @@ builder.Services.AddControllers()
         // que e a convencao esperada pelo JavaScript do frontend.
         options.JsonSerializerOptions.PropertyNamingPolicy =
             System.Text.Json.JsonNamingPolicy.CamelCase;
+
+        // Aceita/devolve enums como string ("Receptor") em vez de
+        // numero (1), que e o que o frontend envia e espera.
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter()
+        );
     });
 
 builder.Services.AddEndpointsApiExplorer();
