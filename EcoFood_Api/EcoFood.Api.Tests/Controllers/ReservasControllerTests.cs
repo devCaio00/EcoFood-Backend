@@ -185,4 +185,217 @@ public class ReservasControllerTests
         var doacaoAtualizada = await context.Doacoes.FindAsync(doacao.Id);
         Assert.Equal(StatusDoacao.Disponivel, doacaoAtualizada!.Status);
     }
+
+    private static Reserva NovaReserva(
+        int doacaoId,
+        int receptorId,
+        StatusReserva status = StatusReserva.Pendente,
+        DateTime? dataReserva = null)
+    {
+        var reserva = new Reserva
+        {
+            DoacaoId = doacaoId,
+            ReceptorId = receptorId,
+            EnderecoConfirmado = true,
+            EnderecoRetiradaSnapshot = "Rua Teste, 1",
+            Status = status
+        };
+
+        if (dataReserva.HasValue)
+            reserva.DataReserva = dataReserva.Value;
+
+        return reserva;
+    }
+
+    private static Doacao NovaDoacao(int doadorId, string descricao) => new()
+    {
+        DoadorId = doadorId,
+        Descricao = descricao,
+        Categoria = "Teste",
+        Quantidade = 1,
+        UnidadeMedida = "kg",
+        Status = StatusDoacao.Disponivel
+    };
+
+    [Fact]
+    public async Task GetAll_SemFiltro_DeveRetornarTodasAsReservas()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (doador, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+
+        var outraDoacao = NovaDoacao(doador.Id, "Feijao");
+        context.Doacoes.Add(outraDoacao);
+        await context.SaveChangesAsync();
+
+        context.Reservas.AddRange(
+            NovaReserva(doacao.Id, receptor.Id),
+            NovaReserva(outraDoacao.Id, receptor.Id));
+        await context.SaveChangesAsync();
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.GetAll(null);
+
+        var ok = Assert.IsType<OkObjectResult>(resultado.Result);
+        var reservas = Assert.IsAssignableFrom<IEnumerable<ReservaResponseDto>>(ok.Value);
+        Assert.Equal(2, reservas.Count());
+    }
+
+    [Fact]
+    public async Task GetAll_ComReceptorId_DeveRetornarApenasReservasDoReceptor()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (doador, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+
+        var outroReceptor = new Usuario
+        {
+            Nome = "Abrigo Dois",
+            Email = "abrigo2@teste.com",
+            TipoUsuario = TipoUsuario.Receptor,
+            Endereco = "Rua B, 2"
+        };
+        var outraDoacao = NovaDoacao(doador.Id, "Feijao");
+        context.Usuarios.Add(outroReceptor);
+        context.Doacoes.Add(outraDoacao);
+        await context.SaveChangesAsync();
+
+        context.Reservas.AddRange(
+            NovaReserva(doacao.Id, receptor.Id),
+            NovaReserva(outraDoacao.Id, outroReceptor.Id));
+        await context.SaveChangesAsync();
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.GetAll(outroReceptor.Id);
+
+        var ok = Assert.IsType<OkObjectResult>(resultado.Result);
+        var reservas = Assert.IsAssignableFrom<IEnumerable<ReservaResponseDto>>(ok.Value);
+        Assert.Single(reservas);
+    }
+
+    [Fact]
+    public async Task GetAll_DeveOrdenarPorDataDeReservaDecrescente()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (doador, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+
+        var outraDoacao = NovaDoacao(doador.Id, "Feijao");
+        context.Doacoes.Add(outraDoacao);
+        await context.SaveChangesAsync();
+
+        var antiga = NovaReserva(doacao.Id, receptor.Id, dataReserva: new DateTime(2020, 1, 1));
+        var recente = NovaReserva(outraDoacao.Id, receptor.Id, dataReserva: new DateTime(2030, 1, 1));
+        context.Reservas.AddRange(antiga, recente);
+        await context.SaveChangesAsync();
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.GetAll(null);
+
+        var ok = Assert.IsType<OkObjectResult>(resultado.Result);
+        var reservas = Assert.IsAssignableFrom<IEnumerable<ReservaResponseDto>>(ok.Value).ToList();
+        Assert.Equal(recente.Id, reservas[0].Id);
+        Assert.Equal(antiga.Id, reservas[1].Id);
+    }
+
+    [Fact]
+    public async Task Create_DeveRetornarNotFound_QuandoDoacaoNaoExiste()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (_, receptor, _) = TestDbContextFactory.SemearCenario(context);
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.Create(
+            new ReservaCreateDto(9999, receptor.Id, true));
+
+        Assert.IsType<NotFoundObjectResult>(resultado.Result);
+        Assert.Empty(context.Reservas);
+    }
+
+    [Fact]
+    public async Task Create_DeveRecusar_QuandoReceptorNaoExiste()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (_, _, doacao) = TestDbContextFactory.SemearCenario(context);
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.Create(
+            new ReservaCreateDto(doacao.Id, 9999, true));
+
+        Assert.IsType<BadRequestObjectResult>(resultado.Result);
+        Assert.Empty(context.Reservas);
+
+        var doacaoRecarregada = await context.Doacoes.FindAsync(doacao.Id);
+        Assert.Equal(StatusDoacao.Disponivel, doacaoRecarregada!.Status);
+    }
+
+    [Fact]
+    public async Task Create_DeveMarcarDoacaoComoReservada_QuandoSucesso()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (_, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+        var controller = new ReservasController(context);
+
+        await controller.Create(new ReservaCreateDto(doacao.Id, receptor.Id, true));
+
+        var doacaoRecarregada = await context.Doacoes.FindAsync(doacao.Id);
+        Assert.Equal(StatusDoacao.Reservado, doacaoRecarregada!.Status);
+    }
+
+    [Fact]
+    public async Task Concluir_DeveRetornarNotFound_QuandoReservaNaoExiste()
+    {
+        using var context = TestDbContextFactory.Criar();
+        TestDbContextFactory.SemearCenario(context);
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.Concluir(9999);
+
+        Assert.IsType<NotFoundResult>(resultado);
+    }
+
+    [Theory]
+    [InlineData(StatusReserva.Concluida)]
+    [InlineData(StatusReserva.Cancelada)]
+    public async Task Concluir_DeveRecusar_QuandoReservaNaoEstaPendente(StatusReserva status)
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (_, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+        var reserva = NovaReserva(doacao.Id, receptor.Id, status);
+        context.Reservas.Add(reserva);
+        await context.SaveChangesAsync();
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.Concluir(reserva.Id);
+
+        Assert.IsType<BadRequestObjectResult>(resultado);
+        var recarregada = await context.Reservas.FindAsync(reserva.Id);
+        Assert.Equal(status, recarregada!.Status);
+    }
+
+    [Fact]
+    public async Task Concluir_DeveRegistrarDataDeRetirada()
+    {
+        using var context = TestDbContextFactory.Criar();
+        var (_, receptor, doacao) = TestDbContextFactory.SemearCenario(context);
+        var reserva = NovaReserva(doacao.Id, receptor.Id);
+        context.Reservas.Add(reserva);
+        await context.SaveChangesAsync();
+        var controller = new ReservasController(context);
+
+        await controller.Concluir(reserva.Id);
+
+        var recarregada = await context.Reservas.FindAsync(reserva.Id);
+        Assert.NotNull(recarregada!.DataRetirada);
+    }
+
+    [Fact]
+    public async Task Cancelar_DeveRetornarNotFound_QuandoReservaNaoExiste()
+    {
+        using var context = TestDbContextFactory.Criar();
+        TestDbContextFactory.SemearCenario(context);
+        var controller = new ReservasController(context);
+
+        var resultado = await controller.Cancelar(9999);
+
+        Assert.IsType<NotFoundResult>(resultado);
+    }
+
 }
