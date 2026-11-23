@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using EcoFood.Api.Data;
+using EcoFood.Api.Models;
+using Microsoft.AspNetCore.Identity;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +22,22 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         ServerVersion.AutoDetect(connectionString)
     )
 );
+
+builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
+builder.Services.AddAuthentication("Bearer")
+    .AddBearerToken("Bearer", options => options.BearerTokenExpiration = TimeSpan.FromHours(1));
+builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "local",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 10,
+            Window = TimeSpan.FromMinutes(1)
+        }));
+});
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -73,6 +92,9 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("FrontendPolicy"); // antes do MapControllers
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

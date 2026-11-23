@@ -1,14 +1,16 @@
+using System.ComponentModel.DataAnnotations;
 using EcoFood.Api.Models;
 
 namespace EcoFood.Api.Dtos;
 
 // Entrada: o que o cliente PODE enviar ao cadastrar
 public record UsuarioCreateDto(
-    string Nome,
-    string Email,
-    string? Telefone,
+    [Required, StringLength(150)] string Nome,
+    [Required, EmailAddress, StringLength(150)] string Email,
+    [StringLength(20)] string? Telefone,
     TipoUsuario TipoUsuario,
-    string Endereco
+    [Required, StringLength(255)] string Endereco,
+    [StringLength(128, MinimumLength = 8)] string? Senha = null
 );
 
 // Saída: o que a API devolve
@@ -34,3 +36,12 @@ public record UsuarioResponseDto(
         u.DataCadastro
     );
 }
+
+public record UsuarioUpdateDto(
+    [Required, StringLength(150)] string Nome,
+    [Required, EmailAddress, StringLength(150)] string Email,
+    [StringLength(20)] string? Telefone,
+    [Required, StringLength(255)] string Endereco,
+    [StringLength(128)] string? SenhaAtual = null,
+    [StringLength(128, MinimumLength = 8)] string? NovaSenha = null
+);
