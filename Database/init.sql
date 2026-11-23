@@ -14,6 +14,7 @@ Id INT AUTO_INCREMENT PRIMARY KEY,
 Nome VARCHAR(150) NOT NULL,
 Email VARCHAR(150) NOT NULL UNIQUE,
 Telefone VARCHAR(20),
+SenhaHash VARCHAR(255) NULL,
 TipoUsuario ENUM('Doador','Receptor','Admin') NOT NULL,
 Endereco VARCHAR(255) NOT NULL,
 DataCadastro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -33,8 +34,8 @@ Status ENUM('Disponivel','Reservado','Retirado','Expirado','Cancelado')
 NOT NULL DEFAULT 'Disponivel',
 Observacoes VARCHAR(500),
 DataCriacao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-CONSTRAINT fk_doacoes_doador FOREIGN KEY (DoadorId)
-REFERENCES Usuarios(Id) ON DELETE CASCADE
+CONSTRAINT fk_doacoes_doador_restrict FOREIGN KEY (DoadorId)
+REFERENCES Usuarios(Id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 -- ------------------------------------------------------------
 -- Reservas: vinculo entre doacao e receptor
@@ -53,9 +54,8 @@ Status ENUM('Pendente','Concluida','Cancelada') NOT NULL DEFAULT
 'Pendente',
 CONSTRAINT fk_reservas_doacao FOREIGN KEY (DoacaoId)
 REFERENCES Doacoes(Id) ON DELETE CASCADE,
-CONSTRAINT fk_reservas_receptor FOREIGN KEY (ReceptorId)
-REFERENCES Usuarios(Id) ON DELETE CASCADE,
-CONSTRAINT uq_reserva_doacao UNIQUE (DoacaoId)
+CONSTRAINT fk_reservas_receptor_restrict FOREIGN KEY (ReceptorId)
+REFERENCES Usuarios(Id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 -- ------------------------------------------------------------
 -- Indices de apoio para as consultas mais frequentes
@@ -63,6 +63,7 @@ CONSTRAINT uq_reserva_doacao UNIQUE (DoacaoId)
 CREATE INDEX idx_doacoes_status ON Doacoes(Status);
 CREATE INDEX idx_doacoes_doador ON Doacoes(DoadorId);
 CREATE INDEX idx_usuarios_tipo ON Usuarios(TipoUsuario);
+CREATE INDEX idx_reservas_doacao ON Reservas(DoacaoId);
 -- ------------------------------------------------------------
 -- Dados de exemplo para desenvolvimento e apresentacao
 -- ------------------------------------------------------------

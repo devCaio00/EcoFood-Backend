@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
         {
             e.ToTable("Usuarios");
             e.HasIndex(u => u.Email).IsUnique();
+            e.Property(u => u.SenhaHash).IsConcurrencyToken();
 
             // Grava o NOME do enum no banco ('Doador'), nao o numero (0)
             e.Property(u => u.TipoUsuario).HasConversion<string>();
@@ -30,11 +31,11 @@ public class AppDbContext : DbContext
             e.ToTable("Doacoes");
             e.Property(d => d.Status).HasConversion<string>();
 
-            // Um doador tem muitas doacoes; apagar o doador apaga as doacoes
+            // Preserva doacoes e reservas ao tentar excluir uma conta.
             e.HasOne(d => d.Doador)
                 .WithMany(u => u.Doacoes)
                 .HasForeignKey(d => d.DoadorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Reserva>(e =>
@@ -42,19 +43,23 @@ public class AppDbContext : DbContext
             e.ToTable("Reservas");
             e.Property(r => r.Status).HasConversion<string>();
 
-            // Espelha a restricao UNIQUE do banco: uma reserva por doacao
-            e.HasIndex(r => r.DoacaoId).IsUnique();
+            // Indice de apoio para buscar reservas por doacao (NAO unique:
+            // uma doacao pode ter mais de uma reserva ao longo do tempo,
+            // ex. uma cancelada e outra criada depois dela).
+            e.HasIndex(r => r.DoacaoId);
 
-            // Relacao um-para-um entre Doacao e Reserva
+            // Relacao um-para-muitos: uma doacao pode ter varias reservas
+            // historicamente, mas no maximo uma ativa por vez (garantido
+            // pelo Status da doacao no controller, nao pelo banco).
             e.HasOne(r => r.Doacao)
-                .WithOne(d => d.Reserva)
-                .HasForeignKey<Reserva>(r => r.DoacaoId)
+                .WithMany(d => d.Reservas)
+                .HasForeignKey(r => r.DoacaoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(r => r.Receptor)
                 .WithMany(u => u.Reservas)
                 .HasForeignKey(r => r.ReceptorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

@@ -32,6 +32,9 @@ public class Doacao {
     public string? Observacoes { get; set; }
 
     public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
-    // Uma doacao tem no maximo UMA reserva (por isso nao e uma colecao)
-    public Reserva? Reserva { get; set; }
+
+    // Uma doacao pode ter varias reservas ao longo do tempo (ex: uma
+    // cancelada e outra criada depois), mas no maximo UMA ativa por vez
+    // -- isso e garantido pelo Status da doacao, nao por constraint de banco.
+    public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
 }
