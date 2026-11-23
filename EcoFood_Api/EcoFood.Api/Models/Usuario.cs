@@ -1,15 +1,19 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace EcoFood.Api.Models;
 
 public class Usuario {
     public int Id { get; set; }
 
-    [Required, MaxLength(150)]  
+    [Required, MaxLength(150)]
     public string Nome { get; set; } = string.Empty;
 
     [Required, MaxLength(150)]
     public string Email { get; set; } = string.Empty;
+
+    [JsonIgnore, MaxLength(255)]
+    public string? SenhaHash { get; set; }
 
     [MaxLength(20)]
     public string? Telefone { get; set; }
@@ -23,6 +27,6 @@ public class Usuario {
     public DateTime DataCadastro { get; set; } = DateTime.UtcNow;
 
     public ICollection<Doacao> Doacoes { get; set; } = new List<Doacao>();
-    
+
     public ICollection<Reserva> Reservas { get; set; } = new List<Reserva>();
 }

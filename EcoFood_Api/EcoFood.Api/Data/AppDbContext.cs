@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
         {
             e.ToTable("Usuarios");
             e.HasIndex(u => u.Email).IsUnique();
+            e.Property(u => u.SenhaHash).IsConcurrencyToken();
 
             // Grava o NOME do enum no banco ('Doador'), nao o numero (0)
             e.Property(u => u.TipoUsuario).HasConversion<string>();
@@ -30,11 +31,11 @@ public class AppDbContext : DbContext
             e.ToTable("Doacoes");
             e.Property(d => d.Status).HasConversion<string>();
 
-            // Um doador tem muitas doacoes; apagar o doador apaga as doacoes
+            // Preserva doacoes e reservas ao tentar excluir uma conta.
             e.HasOne(d => d.Doador)
                 .WithMany(u => u.Doacoes)
                 .HasForeignKey(d => d.DoadorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Reserva>(e =>
@@ -54,7 +55,7 @@ public class AppDbContext : DbContext
             e.HasOne(r => r.Receptor)
                 .WithMany(u => u.Reservas)
                 .HasForeignKey(r => r.ReceptorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }
