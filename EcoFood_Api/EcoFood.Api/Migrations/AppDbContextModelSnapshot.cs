@@ -105,8 +105,7 @@ namespace EcoFood.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DoacaoId")
-                        .IsUnique();
+                    b.HasIndex("DoacaoId");
 
                     b.HasIndex("ReceptorId");
 
@@ -174,8 +173,8 @@ namespace EcoFood.Api.Migrations
             modelBuilder.Entity("EcoFood.Api.Models.Reserva", b =>
                 {
                     b.HasOne("EcoFood.Api.Models.Doacao", "Doacao")
-                        .WithOne("Reserva")
-                        .HasForeignKey("EcoFood.Api.Models.Reserva", "DoacaoId")
+                        .WithMany("Reservas")
+                        .HasForeignKey("DoacaoId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -192,7 +191,7 @@ namespace EcoFood.Api.Migrations
 
             modelBuilder.Entity("EcoFood.Api.Models.Doacao", b =>
                 {
-                    b.Navigation("Reserva");
+                    b.Navigation("Reservas");
                 });
 
             modelBuilder.Entity("EcoFood.Api.Models.Usuario", b =>

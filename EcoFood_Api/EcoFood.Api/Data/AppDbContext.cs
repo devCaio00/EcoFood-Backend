@@ -43,13 +43,17 @@ public class AppDbContext : DbContext
             e.ToTable("Reservas");
             e.Property(r => r.Status).HasConversion<string>();
 
-            // Espelha a restricao UNIQUE do banco: uma reserva por doacao
-            e.HasIndex(r => r.DoacaoId).IsUnique();
+            // Indice de apoio para buscar reservas por doacao (NAO unique:
+            // uma doacao pode ter mais de uma reserva ao longo do tempo,
+            // ex. uma cancelada e outra criada depois dela).
+            e.HasIndex(r => r.DoacaoId);
 
-            // Relacao um-para-um entre Doacao e Reserva
+            // Relacao um-para-muitos: uma doacao pode ter varias reservas
+            // historicamente, mas no maximo uma ativa por vez (garantido
+            // pelo Status da doacao no controller, nao pelo banco).
             e.HasOne(r => r.Doacao)
-                .WithOne(d => d.Reserva)
-                .HasForeignKey<Reserva>(r => r.DoacaoId)
+                .WithMany(d => d.Reservas)
+                .HasForeignKey(r => r.DoacaoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             e.HasOne(r => r.Receptor)

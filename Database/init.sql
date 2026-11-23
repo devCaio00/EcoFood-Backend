@@ -55,8 +55,7 @@ Status ENUM('Pendente','Concluida','Cancelada') NOT NULL DEFAULT
 CONSTRAINT fk_reservas_doacao FOREIGN KEY (DoacaoId)
 REFERENCES Doacoes(Id) ON DELETE CASCADE,
 CONSTRAINT fk_reservas_receptor_restrict FOREIGN KEY (ReceptorId)
-REFERENCES Usuarios(Id) ON DELETE RESTRICT,
-CONSTRAINT uq_reserva_doacao UNIQUE (DoacaoId)
+REFERENCES Usuarios(Id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 -- ------------------------------------------------------------
 -- Indices de apoio para as consultas mais frequentes
@@ -64,6 +63,7 @@ CONSTRAINT uq_reserva_doacao UNIQUE (DoacaoId)
 CREATE INDEX idx_doacoes_status ON Doacoes(Status);
 CREATE INDEX idx_doacoes_doador ON Doacoes(DoadorId);
 CREATE INDEX idx_usuarios_tipo ON Usuarios(TipoUsuario);
+CREATE INDEX idx_reservas_doacao ON Reservas(DoacaoId);
 -- ------------------------------------------------------------
 -- Dados de exemplo para desenvolvimento e apresentacao
 -- ------------------------------------------------------------
