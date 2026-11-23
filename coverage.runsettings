@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <CodeCoverage>
+
+            <!-- Ignora o projeto de testes -->
+            <ModulePaths>
+              <Exclude>
+                <ModulePath>.*\.Tests\.dll$</ModulePath>
+              </Exclude>
+            </ModulePaths>
+
+            <!-- Ignora arquivos/pastas -->
+            <Sources>
+              <Exclude>
+                <Source>.*\\Migrations\\.*</Source>
+                <Source>.*\\obj\\.*</Source>
+                <Source>.*\\Program\.cs</Source>
+              </Exclude>
+            </Sources>
+
+            <!-- Ignora código marcado com atributos -->
+            <Attributes>
+              <Exclude>
+                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+                <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+              </Exclude>
+            </Attributes>
+
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings> 
