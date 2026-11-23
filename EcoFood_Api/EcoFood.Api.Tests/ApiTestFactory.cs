@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -14,13 +15,14 @@ namespace EcoFood.Api.Tests;
 
 public class ApiTestFactory : WebApplicationFactory<Program>
 {
-    // Raiz compartilhada: garante que o seed e a API enxerguem o mesmo banco em memória
-    private static readonly InMemoryDatabaseRoot DbRoot = new();
+    private readonly InMemoryDatabaseRoot _dbRoot = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureTestServices(services =>
         {
+            services.AddDataProtection().UseEphemeralDataProtectionProvider();
+
             // 1) Remove tudo que o Program.cs registrou para o AppDbContext (MySQL)
             services.RemoveAll(typeof(DbContextOptions<AppDbContext>));
             services.RemoveAll(typeof(DbContextOptions));
@@ -39,7 +41,7 @@ public class ApiTestFactory : WebApplicationFactory<Program>
             // 3) Registra somente o InMemory
             services.AddDbContext<AppDbContext>(options =>
             {
-                options.UseInMemoryDatabase("ecofood-integracao", DbRoot);
+                options.UseInMemoryDatabase("ecofood-integracao", _dbRoot);
                 options.ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning));
             });
 
